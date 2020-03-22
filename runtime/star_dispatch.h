@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdlib.h>
 #include <stdbool.h>
 
 // Type prototypes:
@@ -116,9 +117,8 @@ typedef struct SelTableResults {
 
 // Global constants:
 extern size_t $NumTypes, $NumCategories;
-extern Type *$Value, *$Void, *$LLVM$Int32, *$LLVM$Dec64;
-extern Type* **$Types;
-extern Category* **$Categories;
+extern Type* *$Types;
+extern Category* *$Categories;
 
 
 
@@ -196,6 +196,9 @@ Value* /*(never)*/ Void_init(void) __attribute__((noreturn));
 
 
 // Macros:
+
+#define $Value $Types[TypeID$Value]
+#define $Void $Types[TypeID$Void]
 
 #define MD_PRELUDE(type)\
 	out->md.count = 1;\

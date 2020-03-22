@@ -9,9 +9,8 @@
 #include "star_id.h"
 
 size_t $NumTypes, $NumCategories;
-Type *$Value, *$Void, *$LLVM$Int32, *$LLVM$Dec64;
-Type* **$Types;
-Category* **$Categories;
+Type* *$Types;
+Category* *$Categories;
 
 
 
@@ -460,8 +459,8 @@ void Type_cleanup(Type *type) {
 
 Type* Type_fromName(const char* name) {
 	for(int i = 0; i < $NumTypes; i++) {
-		if(!strcmp((*$Types[i])->name, name)) {
-			return *$Types[i];
+		if(!strcmp($Types[i]->name, name)) {
+			return $Types[i];
 		}
 	}
 
@@ -470,8 +469,8 @@ Type* Type_fromName(const char* name) {
 
 Type* Type_fromID(TypeID id) {
 	for(int i = 0; i < $NumTypes; i++) {
-		if((*$Types[i])->id == id) {
-			return *$Types[i];
+		if($Types[i]->id == id) {
+			return $Types[i];
 		}
 	}
 
