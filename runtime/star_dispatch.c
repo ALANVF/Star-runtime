@@ -17,7 +17,35 @@ Category* *$Categories;
 // Method definitions:
 
 /* Method */
-Value* Method_call(Method method, Value *value, Value* *args, size_t arity, bool isVoid) {
+Method* Method_new(RawMethod method) {
+	Method *out = malloc(sizeof(Method));
+	out->raw = method;
+	out->attrs = 0;
+
+	return out;
+}
+
+Method* Method_newWithAttrs(RawMethod method, MethodAttr attrs) {
+	if(attrs & MethodAttr$Unordered) {
+		perror("Error: The method attribute `unordered` is not yet implemented!");
+		exit(1);
+	}
+
+	Method *out = malloc(sizeof(Method));
+	out->raw = method;
+	out->attrs = attrs;
+
+	return out;
+}
+
+void Method_cleanup(Method *method) {
+	method->raw = NULL;
+	free(method);
+}
+
+Value* Method_call(Method *_method, Value *value, Value* *args, size_t arity, bool isVoid) {
+	RawMethod method = _method->raw;
+
 #define ARGS1 args[0]
 #define ARGS2 args[0], args[1]
 #define ARGS3 args[0], args[1], args[2]
@@ -104,7 +132,11 @@ Value* Method_call(Method method, Value *value, Value* *args, size_t arity, bool
 #undef METHOD9
 	}
 
-	return NULL;
+	if(_method->attrs & MethodAttr$Init) {
+		return value;
+	} else {
+		return NULL;
+	}
 
 #undef ARGS1
 #undef ARGS2
@@ -248,11 +280,11 @@ char* Sel_format(Sel sel) {
 
 
 /* SelTable */
-SelTable* SelTable_new(Sel* sels, Method* methods, size_t size) {
+SelTable* SelTable_new(Sel* sels, Method** methods, size_t size) {
 	SelTable *out = malloc(sizeof(SelTable));
 	
 	out->sels = malloc(sizeof(Sel) * size);
-	out->methods = malloc(sizeof(Method) * size);
+	out->methods = malloc(sizeof(Method*) * size);
 	for(int i = 0; i < size; i++) {
 		out->sels[i] = sels[i];
 		out->methods[i] = methods[i];
@@ -276,6 +308,11 @@ void SelTable_cleanup(SelTable *table) {
 	free(table->sels);
 	table->sels = NULL;
 	
+	for(int i = 0; i < table->size; i++) {
+		Method_cleanup(table->methods[i]);
+		table->methods[i] = NULL;
+	}
+
 	free(table->methods);
 	table->methods = NULL;
 
@@ -307,7 +344,7 @@ SelTableResults SelTable_allWithArity(SelTable *table, size_t arity) {
 	return out;
 }
 
-Method SelTable_getWithSelector(SelTable *table, Sel sel) {
+Method* SelTable_getWithSelector(SelTable *table, Sel sel) {
 	SelTableResults results = SelTable_allWithArity(table, Sel_getArity(sel));
 
 	if(sel.type == SelType$Single) {
@@ -532,14 +569,22 @@ bool Type_canInherit(Type *type) {
 	return type->structure != TypeStructure$Kind && type->structure != TypeStructure$Native;
 }
 
-Method Type_getStaticMethodWithSelector(Type *type, Sel sel) {
-	Method out = SelTable_getWithSelector(type->staticTable, sel);
+Method* Type_getStaticMethodWithSelector(Type *type, Sel sel) {
+	Method *out = SelTable_getWithSelector(type->staticTable, sel);
 
 	if(out == NULL && Type_hasParents(type)) {
 		for(int i = 0; i < type->parents->size; i++) {
 			out = Type_getStaticMethodWithSelector(type->parents->types[i], sel);
 
-			if(out != NULL) {
+			if(out != NULL && !(out->attrs & MethodAttr$NoInherit)) {
+				return out;
+			}
+		}
+		
+		for(int i = 0; i < type->categories->size; i++) {
+			out = Category_getStaticMethodForTypeWithSelector(type->categories->categories[i], type, sel);
+
+			if(out != NULL && !(out->attrs & MethodAttr$NoInherit)) {
 				return out;
 			}
 		}
@@ -550,14 +595,22 @@ Method Type_getStaticMethodWithSelector(Type *type, Sel sel) {
 	}
 }
 
-Method Type_getInstanceMethodWithSelector(Type *type, Sel sel) {
-	Method out = SelTable_getWithSelector(type->instanceTable, sel);
+Method* Type_getInstanceMethodWithSelector(Type *type, Sel sel) {
+	Method *out = SelTable_getWithSelector(type->instanceTable, sel);
 
 	if(out == NULL && Type_hasParents(type)) {
 		for(int i = 0; i < type->parents->size; i++) {
 			out = Type_getInstanceMethodWithSelector(type->parents->types[i], sel);
 			
-			if(out != NULL) {
+			if(out != NULL && !(out->attrs & MethodAttr$NoInherit)) {
+				return out;
+			}
+		}
+
+		for(int i = 0; i < type->categories->size; i++) {
+			out = Category_getInstanceMethodForTypeWithSelector(type->categories->categories[i], type, sel);
+
+			if(out != NULL && !(out->attrs & MethodAttr$NoInherit)) {
 				return out;
 			}
 		}
@@ -565,6 +618,23 @@ Method Type_getInstanceMethodWithSelector(Type *type, Sel sel) {
 		return NULL;
 	} else {
 		return out;
+	}
+}
+
+Value* Type_dispatch(Type *type, Sel sel, Value* *args) {
+	Method *method = Type_getStaticMethodWithSelector(type, sel);
+
+	if(method == NULL) {
+		fprintf(stderr, "Error: Type %s does not respond to static method %s!\n", type->name, Sel_format(sel));
+		exit(1);
+	} else {
+		Value *res = Method_call(method, NULL, args, Sel_getArity(sel), sel.retType == TypeID$Void);
+		
+		if(res == NULL) {
+			return res;
+		} else {
+			return Value_castTo(res, Type_fromID(sel.retType));
+		}
 	}
 }
 
@@ -616,6 +686,42 @@ void Category_addType(Category *category, Type *type, SelTable *staticTable, Sel
 	category->extensions[category->size - 1]->type = type;
 	category->extensions[category->size - 1]->staticTable = staticTable;
 	category->extensions[category->size - 1]->instanceTable = instanceTable;
+}
+
+Method* Category_getStaticMethodForTypeWithSelector(Category *category, Type *type, Sel sel) {
+	int index = -1;
+	
+	for(int i = 0; i < category->size; i++) {
+		if(Type_equals(type, category->extensions[i]->type)) {
+			index = i;
+			break;
+		}
+	}
+
+	if(index == -1) {
+		perror("Internal error!");
+		exit(1);
+	} else {
+		return SelTable_getWithSelector(category->extensions[index]->staticTable, sel);
+	}
+}
+
+Method* Category_getInstanceMethodForTypeWithSelector(Category *category, Type *type, Sel sel) {
+	int index = -1;
+	
+	for(int i = 0; i < category->size; i++) {
+		if(Type_equals(type, category->extensions[i]->type)) {
+			index = i;
+			break;
+		}
+	}
+
+	if(index == -1) {
+		perror("Internal error!");
+		exit(1);
+	} else {
+		return SelTable_getWithSelector(category->extensions[index]->instanceTable, sel);
+	}
 }
 
 
@@ -722,7 +828,7 @@ Value* Value_castTo(Value *value, Type *type) {
 }
 
 Value* Value_dispatch(Value *value, Sel sel, Value* *args) {
-	Method method = Type_getInstanceMethodWithSelector(Value_actualTypeOf(value), sel);
+	Method *method = Type_getInstanceMethodWithSelector(Value_actualTypeOf(value), sel);
 
 	if(method == NULL) {
 		fprintf(stderr, "Error: Type %s does not respond to instance method %s!\n", Value_typeOf(value)->name, Sel_format(sel));

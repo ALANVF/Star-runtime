@@ -68,6 +68,12 @@ typedef struct LLVM$Dec128 {
 } LLVM$Dec128;
 
 
+typedef struct LLVM$Str {
+	MD md;
+	char* value;
+} LLVM$Str;
+
+
 
 // Method prototypes:
 
@@ -128,3 +134,17 @@ double LLVM$Dec64_unwrap(LLVM$Dec64*);
 /* LLVM$Dec128 */
 LLVM$Dec128* LLVM$Dec128_wrap(long double);
 long double LLVM$Dec128_unwrap(LLVM$Dec128*);
+
+
+/* LLVM$Str */
+LLVM$Str* LLVM$Str_wrap(char*);
+char* LLVM$Str_unwrap(LLVM$Str*);
+
+// static
+Value* /*(LLVM$Str*)*/ LLVM$Str__newWithLength_LLVM$UInt64(Value* /*(LLVM$Str*)*/, Value* /*(LLVM$UInt64*)*/);
+
+// instance
+Value* /*(LLVM$UInt64*)*/ LLVM$Str__length(Value* /*(LLVM$Str*)*/);
+Value* /*(LLVM$UInt8*)*/ LLVM$Str__at_LLVM$UInt64(Value* /*(LLVM$Str*)*/, Value* /*(LLVM$UInt64*)*/);
+Value* /*(LLVM$UInt8*)*/ LLVM$Str__at_LLVM$UInt64_set_LLVM$UInt8(Value* /*(LLVM$Str*)*/, Value* /*(LLVM$UInt64*)*/, Value* /*(LLVM$UInt8*)*/);
+void LLVM$Str__free(Value* /*(LLVM$Str*)*/);

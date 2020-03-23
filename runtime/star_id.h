@@ -24,6 +24,8 @@ enum {
 	TypeID$LLVM$Dec64,
 	TypeID$LLVM$Dec128,
 
+	TypeID$LLVM$Str, // essentially a fancy char pointer
+
 	TypeID$LLVM$Ptr,
 	TypeID$LLVM$Array,
 

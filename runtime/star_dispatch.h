@@ -13,7 +13,7 @@ typedef struct Category Category;
 
 // Type definitions:
 
-typedef void (*Method)(Value*);
+typedef void (*RawMethod)(Value*);
 typedef size_t TypeID;
 typedef size_t CategoryID;
 
@@ -29,6 +29,19 @@ typedef enum {
 	SelType$Multi,
 	SelType$Cast
 } SelType;
+
+typedef enum {
+	MethodAttr$Init      = 1 << 1,
+	//MethodAttr$Operator  = 1 << 2,
+	MethodAttr$NoInherit = 1 << 3,
+	//MethodAttr$Hidden    = 1 << 4,
+	MethodAttr$Unordered = 1 << 5
+} MethodAttr;
+
+typedef struct Method {
+	RawMethod raw;
+	MethodAttr attrs;
+} Method;
 
 typedef struct Sel {
 	SelType type;
@@ -52,7 +65,7 @@ typedef struct Sel {
 
 typedef struct SelTable {
 	Sel* sels;
-	Method* methods;
+	Method** methods;
 	size_t size;
 } SelTable;
 
@@ -125,7 +138,10 @@ extern Category* *$Categories;
 // Method prototypes:
 
 /* Method */
-Value* Method_call(Method, Value*, Value**, size_t, bool);
+Method* Method_new(RawMethod);
+Method* Method_newWithAttrs(RawMethod, MethodAttr);
+void Method_cleanup(Method*);
+Value* Method_call(Method*, Value*, Value**, size_t, bool);
 
 
 /* Sel */
@@ -137,11 +153,11 @@ char* Sel_format(Sel);
 
 
 /* SelTable */
-SelTable* SelTable_new(Sel*, Method*, size_t);
+SelTable* SelTable_new(Sel*, Method**, size_t);
 SelTable* SelTable_newEmpty(void);
 void SelTable_cleanup(SelTable*);
 SelTableResults SelTable_allWithArity(SelTable*, size_t);
-Method SelTable_getWithSelector(SelTable*, Sel);
+Method* SelTable_getWithSelector(SelTable*, Sel);
 
 
 /* TypeParents */
@@ -165,8 +181,9 @@ bool Type_inherits(Type*, Type*);
 bool Type_hasParents(Type*);
 bool Type_hasParentsBesidesValue(Type*);
 bool Type_canInherit(Type*);
-Method Type_getStaticMethodWithSelector(Type*, Sel);
-Method Type_getInstanceMethodWithSelector(Type*, Sel);
+Method* Type_getStaticMethodWithSelector(Type*, Sel);
+Method* Type_getInstanceMethodWithSelector(Type*, Sel);
+Value* Type_dispatch(Type*, Sel, Value**);
 void Type_addCategory(Type*, Category*);
 bool Type_inCategory(Type*, Category*);
 
@@ -175,6 +192,8 @@ bool Type_inCategory(Type*, Category*);
 Category* Category_new(const char*, CategoryID);
 void Category_cleanup(Category*);
 void Category_addType(Category*, Type*, SelTable*, SelTable*);
+Method* Category_getStaticMethodForTypeWithSelector(Category*, Type*, Sel);
+Method* Category_getInstanceMethodForTypeWithSelector(Category*, Type*, Sel);
 
 
 /* Value */
@@ -208,6 +227,25 @@ Value* /*(never)*/ Void_init(void) __attribute__((noreturn));
 #define RETAIN(value) Value_retain((Value*) value)
 #define RELEASE(value) Value_release((Value*) value)
 #define ISA(value, type) Value_isA((Value*) value, type)
+
+#define TYPE_DISPATCH_SINGLE(type, label, ret)\
+	Type_dispatch(\
+		type,\
+		Sel_newSingle(label, ret),\
+		NULL\
+	)
+
+#define TYPE_DISPATCH_MULTI(type, labels, types, size, ret, args)\
+	Type_dispatch(\
+		type,\
+		Sel_newMulti(\
+			(const char*[]) labels,\
+			(TypeID[]) types,\
+			size,\
+			ret\
+		),\
+		(Value*[]) args\
+	)
 
 #define DISPATCH_SINGLE(value, label, ret)\
 	Value_dispatch(\

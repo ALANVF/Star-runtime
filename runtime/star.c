@@ -25,9 +25,9 @@ void star_initStar(void) {
 				Sel_newSingle("retain", TypeID$Void),
 				Sel_newSingle("release", TypeID$Void)
 			},
-			(Method[]) {
-				Value_retain,
-				Value_release
+			(Method*[]) {
+				Method_new(Value_retain),
+				Method_new(Value_release)
 			},
 			2
 		),
