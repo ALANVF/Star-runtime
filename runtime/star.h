@@ -1,18 +1,28 @@
 #pragma once
 
 #include "star_dispatch.h"
+#include "star_llvm.h"
 
-void star_initStar(void);
-void star_initLLVM(void);
-void star_deinitStar(void);
+namespace star {
 
-size_t star_getNumTypes(void);
-Type** star_getTypes(void);
-void star_registerType(Type*);
+void init();
 
-size_t star_getNumCategories(void);
-Category** star_getCategories(void);
-void star_registerCategory(Category*);
+void deinit();
 
-Type* star_getValueType(void);
-Type* star_getVoidType(void);
+size_t numTypes();
+
+std::vector<Type*>& types();
+
+void registerType(Type*);
+
+size_t numCategories();
+
+std::vector<Category*>& categories();
+
+void registerCategory(Category*);
+
+Type* valueType();
+
+Type* voidType();
+
+}

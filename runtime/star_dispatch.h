@@ -1,274 +1,251 @@
 #pragma once
 
-#include <stdlib.h>
-#include <stdbool.h>
+#include <string>
+#include <vector>
+#include <optional>
+#include <stdexcept>
+#include <cstring>
 
-// Type prototypes:
+namespace star {
 
-typedef struct Type Type;
-typedef struct Value Value;
-typedef struct Category Category;
-
-
-
-// Type definitions:
+class Type;
+class Value;
+class Category;
 
 typedef void (*RawMethod)(Value*);
 typedef size_t TypeID;
 typedef size_t CategoryID;
 
-typedef enum {
-	TypeStructure$Class,
-	TypeStructure$Protocol,
-	TypeStructure$Kind,
-	TypeStructure$Native
-} TypeStructure;
+enum class Structure {
+	Class,
+	Protocol,
+	Kind,
+	Native
+};
 
-typedef enum {
-	SelType$Single,
-	SelType$Multi,
-	SelType$Cast
-} SelType;
-
-typedef enum {
-	MethodAttr$Init      = 1 << 1,
-	//MethodAttr$Operator  = 1 << 2,
-	MethodAttr$NoInherit = 1 << 3,
-	//MethodAttr$Hidden    = 1 << 4,
-	MethodAttr$Unordered = 1 << 5
-} MethodAttr;
-
-typedef struct Method {
-	RawMethod raw;
-	MethodAttr attrs;
-} Method;
-
-typedef struct Sel {
-	SelType type;
-	union {
-		struct {
-			const char* label;
-		} single;
-		
-		struct {
-			const char** labels;
-			TypeID* types;
-			size_t arity;
-		} multi;
-		
-		struct {
-			TypeID type;
-		} cast;
+class Method {
+public:
+	enum Attr {
+		None      = 0,
+		Init      = 1 << 1,
+		NoInherit = 1 << 3,
+		Unordered = 1 << 5
 	};
+	
+	RawMethod raw;
+	Attr attrs;
+
+	Method(RawMethod raw, Attr attrs = None): raw(raw), attrs(attrs) {}
+
+	std::optional<Value*> call(Value*, std::vector<Value*>, bool);
+
+	~Method() {}
+};
+
+class Sel {
+public:
+	enum class SelType {
+		Single,
+		Multi,
+		Cast
+	};
+	
+	SelType type;
 	TypeID retType;
-} Sel;
+	size_t arity;
 
-typedef struct SelTable {
-	Sel* sels;
-	Method** methods;
+	class Single;
+	class Multi;
+	class Cast;
+
+	bool isSingle();
+	
+	bool isMulti();
+	
+	bool isCast();
+
+	virtual std::string format();
+
+	virtual ~Sel() {}
+};
+
+class Sel::Single : public Sel {
+public:
+	std::string label;
+
+	Single(std::string, TypeID);
+
+	virtual std::string format();
+
+	~Single() {}
+};
+
+class Sel::Multi : public Sel {
+public:
+	std::vector<std::string> labels;
+	std::vector<TypeID> types;
+
+	Multi(std::vector<std::string>, std::vector<TypeID>, TypeID);
+
+	virtual std::string format();
+
+	~Multi() {}
+};
+
+class Sel::Cast : public Sel {
+public:
+	Cast(TypeID);
+
+	virtual std::string format();
+
+	~Cast() {}
+};
+
+class SelTable {
+public:
+	std::vector<Sel*> sels;
+	std::vector<Method*> methods;
 	size_t size;
-} SelTable;
 
-typedef struct TypeParents {
-	Type* *types;
-	size_t size;
-} TypeParents;
+	SelTable();
+	SelTable(std::vector<Sel*>, std::vector<Method*>);
 
-typedef struct TypeCategories {
-	Category* *categories;
-	size_t size;
-} TypeCategories;
+	std::vector<size_t> allWithArity(size_t);
 
-typedef struct Type {
-	const char* name;
+	std::optional<Method*> getWithSelector(Sel*);
+
+	~SelTable();
+};
+
+class Type {
+public:
+	static std::vector<Type*> types;
+	static TypeID maxID;
+
+	std::string name;
 	TypeID id;
-	TypeStructure structure;
-	TypeParents *parents;
-	TypeCategories *categories;
+	Structure structure;
+	std::vector<Type*> parents;
+	std::vector<Category*> categories;
 	SelTable *staticTable;
 	SelTable *instanceTable;
 	size_t size;
-	Value* (*init)(void);
+	Value* (*init)();
 	void (*deinit)(Value*);
-} Type;
+	
+	Type(std::string, TypeID, Structure, std::vector<Type*>, SelTable*, SelTable*, size_t, Value* (*)(), void (*)(Value*));
 
-typedef struct CategoryExt {
-	Type *type;
-	SelTable *staticTable;
-	SelTable *instanceTable;
-} CategoryExt;
+	static Type* fromName(std::string);
+	
+	static Type* fromID(TypeID);
 
-typedef struct Category {
-	const char* name;
+	static TypeID newID();
+
+	Value* initDefault();
+
+	bool equals(Type*);
+
+	bool inherits(Type*);
+
+	bool hasParents();
+
+	bool hasParentsBesidesValue();
+
+	bool canInherit();
+
+	std::optional<Method*> getStaticMethodWithSelector(Sel*);
+
+	std::optional<Method*> getInstanceMethodWithSelector(Sel*);
+
+	std::optional<Value*> dispatch(Sel*, std::vector<Value*>);
+
+	void addCategory(Category*);
+
+	bool inCategory(Category*);
+
+	~Type();
+};
+
+class Category {
+private:
+	class Ext {
+	public:
+		Type *type;
+		SelTable *staticTable;
+		SelTable *instanceTable;
+
+		Ext(Type*, SelTable*, SelTable*);
+
+		~Ext();
+	};
+
+public:
+	static std::vector<Category*> categories;
+	static CategoryID maxID;
+
+	std::string name;
 	CategoryID id;
-	CategoryExt* *extensions;
-	size_t size;
-} Category;
+	std::vector<Ext*> extensions;
 
-typedef struct MD {
+	Category(std::string, CategoryID);
+
+	static CategoryID newID();
+
+	void addType(Type*, SelTable*, SelTable*);
+
+	std::optional<Method*> getStaticMethodForTypeWithSelector(Type*, Sel*);
+
+	std::optional<Method*> getInstanceMethodForTypeWithSelector(Type*, Sel*);
+
+	~Category();
+};
+
+class MD {
+public:
 	TypeID current;
 	TypeID actual;
 	size_t count;
-} MD;
 
+	MD(TypeID);
+	MD(TypeID, TypeID);
 
-typedef struct Void {
-	MD md;
-} Void;
+	~MD() {}
+};
 
-typedef struct Value {
-	MD md;
-} Value;
+class Value {
+public:
+	MD *md;
 
+	Value();
 
-typedef struct SelTableResults {
-	int* indices;
-	int size;
-} SelTableResults;
+	static Value* init();
 
+	void deinit();
 
+	void deinitDefault();
 
-// Global constants:
-extern size_t $NumTypes, $NumCategories;
-extern Type* *$Types;
-extern Category* *$Categories;
+	void retain();
 
+	void release();
 
+	bool isA(Type*);
 
-// Method prototypes:
+	Type* typeOf();
 
-/* Method */
-Method* Method_new(RawMethod);
-Method* Method_newWithAttrs(RawMethod, MethodAttr);
-void Method_cleanup(Method*);
-Value* Method_call(Method*, Value*, Value**, size_t, bool);
+	Type* actualTypeOf();
 
+	Value* castTo(Type*);
 
-/* Sel */
-Sel Sel_newSingle(const char*, TypeID);
-Sel Sel_newMulti(const char**, TypeID*, size_t, TypeID);
-Sel Sel_newCast(TypeID);
-size_t Sel_getArity(Sel);
-char* Sel_format(Sel);
+	std::optional<Value*> dispatch(Sel*, std::vector<Value*>);
 
+	~Value();
+};
 
-/* SelTable */
-SelTable* SelTable_new(Sel*, Method**, size_t);
-SelTable* SelTable_newEmpty(void);
-void SelTable_cleanup(SelTable*);
-SelTableResults SelTable_allWithArity(SelTable*, size_t);
-Method* SelTable_getWithSelector(SelTable*, Sel);
+class Void : public Value {
+public:
+	Void() {
+		throw std::runtime_error("Internal error: Type Star.Void should never be instantiated!");
+	}
+};
 
-
-/* TypeParents */
-TypeParents* TypeParents_new(Type**, size_t);
-void TypeParents_cleanup(TypeParents*);
-
-
-/* TypeCategories */
-TypeCategories* TypeCategories_new(void);
-void TypeCategories_cleanup(TypeCategories*);
-
-
-/* Type */
-Type* Type_new(const char*, TypeID, TypeStructure, TypeParents*, SelTable*, SelTable*, size_t, Value* (*)(void), void (*)(Value*));
-void Type_cleanup(Type*);
-Type* Type_fromName(const char*);
-Type* Type_fromID(TypeID);
-Value* Type_initDefault(Type*);
-bool Type_equals(Type*, Type*);
-bool Type_inherits(Type*, Type*);
-bool Type_hasParents(Type*);
-bool Type_hasParentsBesidesValue(Type*);
-bool Type_canInherit(Type*);
-Method* Type_getStaticMethodWithSelector(Type*, Sel);
-Method* Type_getInstanceMethodWithSelector(Type*, Sel);
-Value* Type_dispatch(Type*, Sel, Value**);
-void Type_addCategory(Type*, Category*);
-bool Type_inCategory(Type*, Category*);
-
-
-/* Category */
-Category* Category_new(const char*, CategoryID);
-void Category_cleanup(Category*);
-void Category_addType(Category*, Type*, SelTable*, SelTable*);
-Method* Category_getStaticMethodForTypeWithSelector(Category*, Type*, Sel);
-Method* Category_getInstanceMethodForTypeWithSelector(Category*, Type*, Sel);
-
-
-/* Value */
-Value* Value_init(void);
-void Value_deinit(Value*);
-void Value_deinitDefault(Value*);
-void Value_retain(Value*);
-void Value_release(Value*);
-bool Value_isA(Value*, Type*);
-Type* Value_typeOf(Value*);
-Type* Value_actualTypeOf(Value*);
-Value* Value_castTo(Value*, Type*);
-Value* Value_dispatch(Value*, Sel, Value**);
-
-
-/* Void */
-Value* /*(never)*/ Void_init(void) __attribute__((noreturn));
-
-
-
-// Macros:
-
-#define $Value $Types[TypeID$Value]
-#define $Void $Types[TypeID$Void]
-
-#define MD_PRELUDE(type)\
-	out->md.count = 1;\
-	out->md.current = TypeID$##type;\
-	out->md.actual = TypeID$##type
-
-#define RETAIN(value) Value_retain((Value*) value)
-#define RELEASE(value) Value_release((Value*) value)
-#define ISA(value, type) Value_isA((Value*) value, type)
-
-#define TYPE_DISPATCH_SINGLE(type, label, ret)\
-	Type_dispatch(\
-		type,\
-		Sel_newSingle(label, ret),\
-		NULL\
-	)
-
-#define TYPE_DISPATCH_MULTI(type, labels, types, size, ret, args)\
-	Type_dispatch(\
-		type,\
-		Sel_newMulti(\
-			(const char*[]) labels,\
-			(TypeID[]) types,\
-			size,\
-			ret\
-		),\
-		(Value*[]) args\
-	)
-
-#define DISPATCH_SINGLE(value, label, ret)\
-	Value_dispatch(\
-		(Value*) value,\
-		Sel_newSingle(label, ret),\
-		NULL\
-	)
-
-#define DISPATCH_MULTI(value, labels, types, size, ret, args)\
-	Value_dispatch(\
-		(Value*) value,\
-		Sel_newMulti(\
-			(const char*[]) labels,\
-			(TypeID[]) types,\
-			size,\
-			ret\
-		),\
-		(Value*[]) args\
-	)
-
-#define DISPATCH_CAST(value, type)\
-	Value_dispatch(\
-		(Value*) value,\
-		Sel_newCast(type),\
-		NULL\
-	)
+}

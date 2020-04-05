@@ -1,150 +1,57 @@
 #pragma once
 
-#include <stdint.h>
-#include <stdbool.h>
+#include "star.h"
 
-#include "star_dispatch.h"
+namespace star {
 
-typedef struct LLVM$Int1 {
-	MD md;
-	bool value;
-} LLVM$Int1;
+namespace llvm {
+	template<typename Repr, typename = std::enable_if_t<std::negation_v<std::is_void<Repr>>>>
+	class Native : public Value {
+	public:
+		static TypeID id;
 
-typedef struct LLVM$Int8 {
-	MD md;
-	int8_t value;
-} LLVM$Int8;
+		Repr repr;
 
-typedef struct LLVM$Int16 {
-	MD md;
-	int16_t value;
-} LLVM$Int16;
+		Native(Repr repr): repr(repr) {
+			this->md = new MD(id);
+		}
 
-typedef struct LLVM$Int32 {
-	MD md;
-	int32_t value;
-} LLVM$Int32;
+		/*
+		operator Native<Repr*>() {
+			return Native(&this->repr);
+		}
+		
+		template<
+			typename = std::enable_if_t<std::is_pointer_v<Repr>>
+		>
+		operator Native<std::remove_pointer_t<Repr>, void>() {
+			return Native(*this->repr);
+		}
+		
+		template<typename T>
+		operator Native<T, void>() {
+			return Native(reinterpret_cast<T>(this->repr));
+		}
+		*/
+	};
 
-typedef struct LLVM$Int64 {
-	MD md;
-	int64_t value;
-} LLVM$Int64;
+	// TODO: move id initialization to star::llvm::init
+	using Int1 = Native<bool>;
+	using Int8 = Native<int8_t>;
+	using Int16 = Native<int16_t>;
+	using Int32 = Native<int32_t>;
+	using Int64 = Native<int64_t>;
+	using UInt8 = Native<uint8_t>;
+	using UInt16 = Native<uint16_t>;
+	using UInt32 = Native<uint32_t>;
+	using UInt64 = Native<uint64_t>;
+	using Dec32 = Native<float>;
+	using Dec64 = Native<double>;
+	using Dec128 = Native<long double>;
+	using Str = Native<char*>;
+	using Opaque = Native<void*>;
 
+	void init();
+}
 
-typedef struct LLVM$UInt8 {
-	MD md;
-	uint8_t value;
-} LLVM$UInt8;
-
-typedef struct LLVM$UInt16 {
-	MD md;
-	uint16_t value;
-} LLVM$UInt16;
-
-typedef struct LLVM$UInt32 {
-	MD md;
-	uint32_t value;
-} LLVM$UInt32;
-
-typedef struct LLVM$UInt64 {
-	MD md;
-	uint64_t value;
-} LLVM$UInt64;
-
-
-typedef struct LLVM$Dec32 {
-	MD md;
-	float value;
-} LLVM$Dec32;
-
-typedef struct LLVM$Dec64 {
-	MD md;
-	double value;
-} LLVM$Dec64;
-
-typedef struct LLVM$Dec128 {
-	MD md;
-	long double value;
-} LLVM$Dec128;
-
-
-typedef struct LLVM$Str {
-	MD md;
-	char* value;
-} LLVM$Str;
-
-
-
-// Method prototypes:
-
-/* LLVM$Int1 */
-LLVM$Int1* LLVM$Int1_wrap(bool);
-bool LLVM$Int1_unwrap(LLVM$Int1*);
-
-/* LLVM$Int8 */
-LLVM$Int8* LLVM$Int8_wrap(int8_t);
-int8_t LLVM$Int8_unwrap(LLVM$Int8*);
-
-
-/* LLVM$Int16 */
-LLVM$Int16* LLVM$Int16_wrap(int16_t);
-int16_t LLVM$Int16_unwrap(LLVM$Int16*);
-
-
-/* LLVM$Int32 */
-LLVM$Int32* LLVM$Int32_wrap(int32_t);
-int32_t LLVM$Int32_unwrap(LLVM$Int32*);
-
-
-/* LLVM$Int64 */
-LLVM$Int64* LLVM$Int64_wrap(int64_t);
-int64_t LLVM$Int64_unwrap(LLVM$Int64*);
-
-
-/* LLVM$UInt8 */
-LLVM$UInt8* LLVM$UInt8_wrap(uint8_t);
-uint8_t LLVM$UInt8_unwrap(LLVM$UInt8*);
-
-
-/* LLVM$UInt16 */
-LLVM$UInt16* LLVM$UInt16_wrap(uint16_t);
-uint16_t LLVM$UInt16_unwrap(LLVM$UInt16*);
-
-
-/* LLVM$UInt32 */
-LLVM$UInt32* LLVM$UInt32_wrap(uint32_t);
-uint32_t LLVM$UInt32_unwrap(LLVM$UInt32*);
-
-
-/* LLVM$UInt64 */
-LLVM$UInt64* LLVM$UInt64_wrap(uint64_t);
-uint64_t LLVM$UInt64_unwrap(LLVM$UInt64*);
-
-
-/* LLVM$Dec32 */
-LLVM$Dec32* LLVM$Dec32_wrap(float);
-float LLVM$Dec32_unwrap(LLVM$Dec32*);
-
-
-/* LLVM$Dec64 */
-LLVM$Dec64* LLVM$Dec64_wrap(double);
-double LLVM$Dec64_unwrap(LLVM$Dec64*);
-
-
-/* LLVM$Dec128 */
-LLVM$Dec128* LLVM$Dec128_wrap(long double);
-long double LLVM$Dec128_unwrap(LLVM$Dec128*);
-
-
-/* LLVM$Str */
-LLVM$Str* LLVM$Str_wrap(char*);
-char* LLVM$Str_unwrap(LLVM$Str*);
-
-// static
-Value* /*(LLVM$Str*)*/ LLVM$Str__newWithLength_LLVM$UInt64(Value* /*(LLVM$Str*)*/, Value* /*(LLVM$UInt64*)*/);
-
-// instance
-Value* /*(LLVM$UInt64*)*/ LLVM$Str__length(Value* /*(LLVM$Str*)*/);
-Value* /*(LLVM$UInt8*)*/ LLVM$Str__at_LLVM$UInt64(Value* /*(LLVM$Str*)*/, Value* /*(LLVM$UInt64*)*/);
-Value* /*(LLVM$UInt8*)*/ LLVM$Str__at_LLVM$UInt64_set_LLVM$UInt8(Value* /*(LLVM$Str*)*/, Value* /*(LLVM$UInt64*)*/, Value* /*(LLVM$UInt8*)*/);
-void LLVM$Str__free(Value* /*(LLVM$Str*)*/);
+}
