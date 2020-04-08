@@ -1,10 +1,12 @@
 #pragma once
 
 #include <string>
+#include <functional>
 #include <vector>
 #include <optional>
 #include <stdexcept>
 #include <cstring>
+#include <memory>
 
 namespace star {
 
@@ -131,7 +133,9 @@ public:
 	SelTable *instanceTable;
 	size_t size;
 	Value* (*init)();
+	//std::function<Value*()> init;
 	void (*deinit)(Value*);
+	//std::function<void(Value*)> deinit;
 	
 	Type(std::string, TypeID, Structure, std::vector<Type*>, SelTable*, SelTable*, size_t, Value* (*)(), void (*)(Value*));
 
@@ -209,6 +213,8 @@ public:
 	MD(TypeID);
 	MD(TypeID, TypeID);
 
+	std::string format();
+
 	~MD() {}
 };
 
@@ -246,6 +252,8 @@ public:
 	Void() {
 		throw std::runtime_error("Internal error: Type Star.Void should never be instantiated!");
 	}
+
+	~Void() {}
 };
 
 }

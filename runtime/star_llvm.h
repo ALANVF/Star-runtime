@@ -16,6 +16,11 @@ namespace llvm {
 			this->md = new MD(id);
 		}
 
+		template<typename T>
+		operator Native<T>() {
+			return Native(reinterpret_cast<T>(this->repr));
+		}
+
 		/*
 		operator Native<Repr*>() {
 			return Native(&this->repr);
@@ -33,6 +38,8 @@ namespace llvm {
 			return Native(reinterpret_cast<T>(this->repr));
 		}
 		*/
+
+		~Native() {}
 	};
 
 	// TODO: move id initialization to star::llvm::init

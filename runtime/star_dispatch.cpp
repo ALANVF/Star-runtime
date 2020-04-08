@@ -154,7 +154,7 @@ std::string Sel::Multi::format() {
 		}
 	}
 
-	return out;
+	return out + "]";
 }
 
 
@@ -466,6 +466,14 @@ MD::MD(TypeID current, TypeID actual) {
 	this->count = 1;
 }
 
+std::string MD::format() {
+	return (
+		"Current: " + Type::fromID(this->current)->name + ", "
+		"Actual: " + Type::fromID(this->actual)->name + ", "
+		"Count: " + std::to_string(this->count)
+	);
+}
+
 
 // Value:
 Value::Value() {
@@ -477,28 +485,19 @@ Value* Value::init() {
 }
 
 void Value::deinit() {
-	delete this->md;
-	this->md = nullptr;
-	
+	//delete this->md;
+	//this->md = nullptr;
+
 	operator delete(this, this->actualTypeOf()->size);
 }
 
 void Value::deinitDefault() {
 	Type *actualType = this->actualTypeOf();
-
+	
 	if(actualType->deinit == nullptr) {
 		Type *type = this->typeOf();
-
-		if(type->deinit == nullptr) {
-			delete this->md;
-			this->md = nullptr;
-
-			if(actualType->structure == Structure::Native) {
-				operator delete(this, sizeof(this));
-			} else {
-				operator delete(this, actualType->size);
-			}
-		} else {
+		
+		if(type->deinit != nullptr) {
 			type->deinit(this);
 		}
 	} else {
@@ -512,7 +511,16 @@ void Value::retain() {
 
 void Value::release() {
 	if(--this->md->count == 0) {
+		Type *actualType = this->actualTypeOf();
+
 		this->deinitDefault();
+		delete this->md;
+
+		if(actualType->structure == Structure::Native) {
+			operator delete(this, sizeof(this));
+		} else {
+			operator delete(this, actualType->size);
+		}
 	}
 }
 
@@ -577,7 +585,11 @@ std::optional<Value*> Value::dispatch(Sel *sel, std::vector<Value*> args) {
 	
 	if(auto method = type->getInstanceMethodWithSelector(sel)) {
 		if(auto result = (*method)->call(this, args, sel->retType == 1)) {
-			return (*result)->castTo(Type::fromID(sel->retType));
+			if((*method)->attrs & Method::Attr::Init) {
+				return this;
+			} else {
+				return (*result)->castTo(Type::fromID(sel->retType));
+			}
 		} else {
 			return {};
 		}
@@ -586,9 +598,6 @@ std::optional<Value*> Value::dispatch(Sel *sel, std::vector<Value*> args) {
 	}
 }
 	
-Value::~Value() {
-	delete this->md;
-	this->md = nullptr;
-}
+Value::~Value() {}
 
 }
