@@ -6,7 +6,7 @@ namespace star {
 
 namespace llvm {
 	template<typename Repr, typename = std::enable_if_t<std::negation_v<std::is_void<Repr>>>>
-	class Native : public Value {
+	class Native: public Value {
 	public:
 		static TypeID id;
 
@@ -21,28 +21,9 @@ namespace llvm {
 			return Native(reinterpret_cast<T>(this->repr));
 		}
 
-		/*
-		operator Native<Repr*>() {
-			return Native(&this->repr);
-		}
-		
-		template<
-			typename = std::enable_if_t<std::is_pointer_v<Repr>>
-		>
-		operator Native<std::remove_pointer_t<Repr>, void>() {
-			return Native(*this->repr);
-		}
-		
-		template<typename T>
-		operator Native<T, void>() {
-			return Native(reinterpret_cast<T>(this->repr));
-		}
-		*/
-
 		~Native() {}
 	};
-
-	// TODO: move id initialization to star::llvm::init
+	
 	using Int1 = Native<bool>;
 	using Int8 = Native<int8_t>;
 	using Int16 = Native<int16_t>;

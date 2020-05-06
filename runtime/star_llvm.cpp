@@ -6,7 +6,7 @@ namespace star {
 	registerType(\
 		new Type(\
 			"Star.LLVM." #type,\
-			Type::newID(),\
+			type::id,\
 			Structure::Native,\
 			{},\
 			new SelTable(),\
@@ -18,22 +18,37 @@ namespace star {
 	)
 
 namespace llvm {
-	template<> TypeID Int1::id = 2;
-	template<> TypeID Int8::id = 3;
-	template<> TypeID Int16::id = 4;
-	template<> TypeID Int32::id = 5;
-	template<> TypeID Int64::id = 6;
-	template<> TypeID UInt8::id = 7;
-	template<> TypeID UInt16::id = 8;
-	template<> TypeID UInt32::id = 9;
-	template<> TypeID UInt64::id = 10;
-	template<> TypeID Dec32::id = 11;
-	template<> TypeID Dec64::id = 12;
-	template<> TypeID Dec128::id = 13;
-	template<> TypeID Str::id = 14;
-	template<> TypeID Opaque::id = 15;
+	template<> TypeID Int1::id = 0;
+	template<> TypeID Int8::id = 0;
+	template<> TypeID Int16::id = 0;
+	template<> TypeID Int32::id = 0;
+	template<> TypeID Int64::id = 0;
+	template<> TypeID UInt8::id = 0;
+	template<> TypeID UInt16::id = 0;
+	template<> TypeID UInt32::id = 0;
+	template<> TypeID UInt64::id = 0;
+	template<> TypeID Dec32::id = 0;
+	template<> TypeID Dec64::id = 0;
+	template<> TypeID Dec128::id = 0;
+	template<> TypeID Str::id = 0;
+	template<> TypeID Opaque::id = 0;
 
 	void init() {
+		Int1::id = Type::newID();
+		Int8::id = Type::newID();
+		Int16::id = Type::newID();
+		Int32::id = Type::newID();
+		Int64::id = Type::newID();
+		UInt8::id = Type::newID();
+		UInt16::id = Type::newID();
+		UInt32::id = Type::newID();
+		UInt64::id = Type::newID();
+		Dec32::id = Type::newID();
+		Dec64::id = Type::newID();
+		Dec128::id = Type::newID();
+		Str::id = Type::newID();
+		Opaque::id = Type::newID();
+
 		ADD_NATIVE(Int1);
 		ADD_NATIVE(Int8);
 		ADD_NATIVE(Int16);

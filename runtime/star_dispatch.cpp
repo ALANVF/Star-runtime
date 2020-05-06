@@ -258,7 +258,7 @@ Type* Type::fromName(std::string name) {
 		}
 	}
 
-	throw std::runtime_error("error!");
+	throw std::runtime_error("error! (unknown type)");
 }
 
 Type* Type::fromID(TypeID id) {
@@ -268,7 +268,7 @@ Type* Type::fromID(TypeID id) {
 		}
 	}
 
-	throw std::runtime_error("error!");
+	throw std::runtime_error("error! (unknown type id)");
 }
 
 TypeID Type::newID() {
@@ -559,7 +559,7 @@ Value* Value::castTo(Type *type) {
 			out->md->actual = type->id;
 			return out;
 		} else {
-			throw std::runtime_error("error!");
+			throw std::runtime_error("error! (bad class cast)");
 		}
 	} else if(type->structure == Structure::Protocol) {
 		if(current->inherits(type)) {
@@ -573,7 +573,7 @@ Value* Value::castTo(Type *type) {
 			out->md->current = type->id;
 			return out;
 		} else {
-			throw std::runtime_error("error!");
+			throw std::runtime_error("error! (bad protocol cast)");
 		}
 	} else {
 		throw std::runtime_error("Error: Unimplemented!");
